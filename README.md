@@ -9,9 +9,9 @@ Construido solo con herramientas gratuitas.
 - **NestJS 12** (TypeScript, ESM)
 - **LangChain** con **Groq** (`openai/gpt-oss-120b`, plan gratuito)
 - **RAG** con embeddings de **Gemini** (`gemini-embedding-2`, plan gratuito) y un vector store en memoria
-- Límite por IP con `@nestjs/throttler` (5 preguntas por minuto, 30 por hora)
+- Límite por IP con `@nestjs/throttler` (5 preguntas por minuto, 30 por hora), usando la IP que entrega Cloudflare
 - Validación con `class-validator`
-- Desplegado en **Render** (plan gratuito)
+- Desplegado en **Render** (plan gratuito): https://pregunta-a-mi-cv.onrender.com
 - Tests con Vitest
 
 ## Cómo funciona
@@ -71,6 +71,8 @@ curl -X POST http://localhost:3000/chat \
 
 `render.yaml` define el servicio (Blueprint): Node 24, plan gratuito, `GET /health` como health check. Al crearlo, Render pide los valores de `GROQ_API_KEY` y `GEMINI_API_KEY`. Cada push a `main` se despliega solo.
 
+**Límite por IP detrás de Render**: el proxy de Render agrega IPs a `X-Forwarded-For` sin limpiar lo que manda el visitante, así que ese encabezado se puede falsificar y sus últimas entradas cambian entre peticiones. El límite usa `CF-Connecting-IP`, que Cloudflare sobrescribe en cada petición (y rechaza con 403 si alguien intenta enviarlo).
+
 El plan gratuito duerme el servidor tras 15 minutos sin uso y despertarlo tarda entre 30 y 60 segundos; el portfolio llama a `/health` al cargar para adelantarse.
 
 ### Tests
@@ -85,5 +87,5 @@ npm run test:e2e  # end-to-end (usan modelos falsos: no gastan cuota ni descarga
 - [x] Fase 1: base de conocimiento y endpoint `/chat`
 - [x] Fase 2: RAG (fragmentos, embeddings y búsqueda por similitud)
 - [x] Fase 3: respuestas en streaming y chat en Angular dentro del portfolio ([código del chat](https://github.com/Optickal095/portfolio/tree/main/src/app/chat))
-- [ ] Fase 4: límite de mensajes por IP y despliegue en Render
+- [x] Fase 4: límite de mensajes por IP y despliegue en Render
 - [ ] Fase 5: preguntas sugeridas y fuentes de cada respuesta
