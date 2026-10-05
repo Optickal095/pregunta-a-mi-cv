@@ -6,7 +6,7 @@ Agente en producción que conversa con clientes por WhatsApp, envía órdenes de
 
 ## Plataforma de rehabilitación uMov (privado)
 
-Panel web con gráficas de la evolución de pacientes en rehabilitación post-ACV, hecho con React, Ant Design y MySQL. El código es privado.
+Panel web con gráficas de la evolución de pacientes en rehabilitación post-ACV, hecho con React, Ant Design, JavaScript, TypeScript y MySQL. El código es privado.
 
 ## Tocata (proyecto de título)
 

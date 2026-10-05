@@ -20,7 +20,7 @@ uMov desarrolla una plataforma web complementaria a un dispositivo médico que r
 Lo que hizo Eduardo:
 
 - Construyó vistas que muestran el progreso de las sesiones de rehabilitación, con gráficas de la evolución del paciente en el tiempo, para que los profesionales de la salud pudieran sacar conclusiones.
-- Implementó módulos con React y la biblioteca Ant Design, MySQL y consumo de APIs.
+- Implementó módulos con React y la biblioteca Ant Design, usando JavaScript y TypeScript, sobre MySQL y con consumo de APIs.
 - Trabajó en equipo con otros desarrolladores y colaboró con diseñadores, el CEO y el CIO del proyecto.
 
 ## Proyecto de Título en la Universidad del Bío-Bío (marzo 2023 – agosto 2023)
