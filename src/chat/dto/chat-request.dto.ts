@@ -39,4 +39,6 @@ export class ChatRequestDto {
 
 export interface ChatResponse {
   answer: string;
+  /** Knowledge sections given to the model, as "file › section". */
+  sources: string[];
 }

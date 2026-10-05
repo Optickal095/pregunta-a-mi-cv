@@ -1,20 +1,16 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import type { Document } from '@langchain/core/documents';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-
-export interface KnowledgeDocument {
-  /** File name without extension, e.g. `experiencia`. */
-  source: string;
-  content: string;
-}
+import { type ChunkMetadata, splitMarkdown } from './markdown-chunker.js';
 
 export const KNOWLEDGE_DIR = Symbol('KNOWLEDGE_DIR');
 
-/** Loads the Markdown files that describe Eduardo's CV. */
+/** Loads the Markdown files that describe Eduardo's CV and splits them into chunks. */
 @Injectable()
 export class KnowledgeService implements OnModuleInit {
   private readonly logger = new Logger(KnowledgeService.name);
-  private documents: KnowledgeDocument[] = [];
+  private chunks: Document<ChunkMetadata>[] = [];
 
   constructor(@Inject(KNOWLEDGE_DIR) private readonly dir: string) {}
 
@@ -27,26 +23,22 @@ export class KnowledgeService implements OnModuleInit {
       .filter((file) => file.endsWith('.md'))
       .sort();
 
-    this.documents = await Promise.all(
+    const documents = await Promise.all(
       files.map(async (file) => ({
         source: file.replace(/\.md$/, ''),
-        content: (await readFile(join(this.dir, file), 'utf-8')).trim(),
+        content: await readFile(join(this.dir, file), 'utf-8'),
       })),
     );
-    this.logger.log(`Loaded ${this.documents.length} knowledge documents`);
+
+    this.chunks = documents.flatMap((doc) =>
+      splitMarkdown(doc.source, doc.content),
+    );
+    this.logger.log(
+      `Loaded ${documents.length} knowledge documents (${this.chunks.length} chunks)`,
+    );
   }
 
-  getDocuments(): readonly KnowledgeDocument[] {
-    return this.documents;
-  }
-
-  /** Every document, tagged with its source, ready to go into a prompt. */
-  toContext(): string {
-    return this.documents
-      .map(
-        (doc) =>
-          `<documento fuente="${doc.source}">\n${doc.content}\n</documento>`,
-      )
-      .join('\n\n');
+  getChunks(): readonly Document<ChunkMetadata>[] {
+    return this.chunks;
   }
 }

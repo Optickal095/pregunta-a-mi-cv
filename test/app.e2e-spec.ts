@@ -6,6 +6,8 @@ import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { setupApp } from './../src/app.setup.js';
 import { CHAT_MODEL } from './../src/chat/chat.constants.js';
+import { EMBEDDINGS } from './../src/retrieval/retrieval.constants.js';
+import { KeywordEmbeddings } from './helpers/keyword-embeddings.js';
 
 describe('API (e2e)', () => {
   let app: INestApplication<App>;
@@ -16,6 +18,8 @@ describe('API (e2e)', () => {
     })
       .overrideProvider(CHAT_MODEL)
       .useValue(new FakeListChatModel({ responses: ['Trabajó en Canai.'] }))
+      .overrideProvider(EMBEDDINGS)
+      .useValue(new KeywordEmbeddings())
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -30,12 +34,16 @@ describe('API (e2e)', () => {
       .expect({ status: 'ok' });
   });
 
-  it('POST /chat answers a question', () => {
-    return request(app.getHttpServer())
+  it('POST /chat answers using the relevant sections of the CV', async () => {
+    const response = await request(app.getHttpServer())
       .post('/chat')
-      .send({ message: '¿Dónde trabajó?' })
-      .expect(200)
-      .expect({ answer: 'Trabajó en Canai.' });
+      .send({ message: '¿Qué hizo en Canai?' })
+      .expect(200);
+
+    expect(response.body.answer).toBe('Trabajó en Canai.');
+    expect(response.body.sources[0]).toBe(
+      'experiencia › Software Engineer en Canai (noviembre 2025 – agosto 2026)',
+    );
   });
 
   it('POST /chat rejects an empty message', () => {

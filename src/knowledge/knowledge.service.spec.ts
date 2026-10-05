@@ -10,8 +10,10 @@ describe('KnowledgeService', () => {
   });
 
   it('loads every Markdown file in the knowledge folder', () => {
-    const sources = service.getDocuments().map((doc) => doc.source);
-    expect(sources).toEqual([
+    const sources = new Set(
+      service.getChunks().map((chunk) => chunk.metadata.source),
+    );
+    expect([...sources]).toEqual([
       'experiencia',
       'formacion',
       'perfil',
@@ -20,9 +22,12 @@ describe('KnowledgeService', () => {
     ]);
   });
 
-  it('tags each document with its source in the prompt context', () => {
-    const context = service.toContext();
-    expect(context).toContain('<documento fuente="experiencia">');
-    expect(context).toContain('Software Engineer en Canai');
+  it('splits the CV into one chunk per section', () => {
+    const canai = service
+      .getChunks()
+      .find((chunk) => chunk.metadata.section.includes('Canai'));
+    expect(canai?.metadata.source).toBe('experiencia');
+    expect(canai?.pageContent).toContain('Google Vision');
+    expect(canai?.pageContent).not.toContain('uMov');
   });
 });

@@ -13,10 +13,14 @@ import {
   SystemMessage,
   type BaseMessage,
 } from '@langchain/core/messages';
-import { KnowledgeService } from '../knowledge/knowledge.service.js';
+import { RetrievalService } from '../retrieval/retrieval.service.js';
 import { CHAT_MODEL } from './chat.constants.js';
-import { buildSystemPrompt } from './chat.prompt.js';
-import type { ChatRequestDto, ChatResponse } from './dto/chat-request.dto.js';
+import { buildSystemPrompt, formatContext } from './chat.prompt.js';
+import type {
+  ChatRequestDto,
+  ChatResponse,
+  ChatTurnDto,
+} from './dto/chat-request.dto.js';
 
 @Injectable()
 export class ChatService {
@@ -24,7 +28,7 @@ export class ChatService {
 
   constructor(
     @Inject(CHAT_MODEL) private readonly model: BaseChatModel | null,
-    @Inject(KnowledgeService) private readonly knowledge: KnowledgeService,
+    @Inject(RetrievalService) private readonly retrieval: RetrievalService,
   ) {}
 
   async answer({
@@ -37,8 +41,19 @@ export class ChatService {
       );
     }
 
+    const chunks = await this.retrieval.search(
+      buildSearchQuery(message, history),
+    );
+    const sources = [
+      ...new Set(
+        chunks.map(
+          ({ metadata }) => `${metadata.source} › ${metadata.section}`,
+        ),
+      ),
+    ];
+
     const messages: BaseMessage[] = [
-      new SystemMessage(buildSystemPrompt(this.knowledge.toContext())),
+      new SystemMessage(buildSystemPrompt(formatContext(chunks))),
       ...history.map((turn) =>
         turn.role === 'user'
           ? new HumanMessage(turn.content)
@@ -49,7 +64,12 @@ export class ChatService {
 
     try {
       const result = await this.model.invoke(messages);
-      return { answer: result.text.trim() };
+      const inputTokens = result.usage_metadata?.input_tokens;
+      this.logger.log(
+        `Answered with ${chunks.length} chunks` +
+          (inputTokens ? ` (${inputTokens} input tokens)` : ''),
+      );
+      return { answer: result.text.trim(), sources };
     } catch (error) {
       if (isRateLimitError(error)) {
         this.logger.warn('Groq rate limit reached');
@@ -64,6 +84,18 @@ export class ChatService {
       );
     }
   }
+}
+
+/**
+ * A follow-up like "¿y qué tecnologías usó ahí?" does not say where "ahí" is,
+ * so the previous question joins the search to keep the topic.
+ */
+export function buildSearchQuery(
+  message: string,
+  history: ChatTurnDto[],
+): string {
+  const previousQuestion = history.findLast((turn) => turn.role === 'user');
+  return previousQuestion ? `${previousQuestion.content}\n${message}` : message;
 }
 
 /** The free Groq plan caps tokens per minute; its SDK reports that as HTTP 429. */

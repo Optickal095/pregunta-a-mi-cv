@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatGroq } from '@langchain/groq';
-import { KnowledgeModule } from '../knowledge/knowledge.module.js';
+import { RetrievalModule } from '../retrieval/retrieval.module.js';
 import { CHAT_MODEL, DEFAULT_GROQ_MODEL } from './chat.constants.js';
 import { ChatController } from './chat.controller.js';
 import { ChatService } from './chat.service.js';
 
 @Module({
-  imports: [KnowledgeModule],
+  imports: [RetrievalModule],
   controllers: [ChatController],
   providers: [
     ChatService,

@@ -1,3 +1,6 @@
+import type { DocumentInterface } from '@langchain/core/documents';
+import type { ChunkMetadata } from '../knowledge/markdown-chunker.js';
+
 export function buildSystemPrompt(context: string): string {
   return `Eres el asistente del portfolio de Eduardo Hernández Oyarzún. Respondes preguntas de reclutadores y visitantes sobre su experiencia, proyectos, tecnologías y formación.
 
@@ -14,4 +17,16 @@ Reglas:
 
 Documentos:
 ${context}`;
+}
+
+/** Formats retrieved chunks for the prompt, each tagged with where it came from. */
+export function formatContext(
+  chunks: DocumentInterface<ChunkMetadata>[],
+): string {
+  return chunks
+    .map(
+      (chunk) =>
+        `<documento fuente="${chunk.metadata.source}">\n${chunk.pageContent}\n</documento>`,
+    )
+    .join('\n\n');
 }
