@@ -1,4 +1,5 @@
-import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:4200',
@@ -6,7 +7,7 @@ const DEFAULT_CORS_ORIGINS = [
 ];
 
 /** Global app configuration, shared by `main.ts` and the e2e tests. */
-export function setupApp(app: INestApplication): void {
+export function setupApp(app: NestExpressApplication): void {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -17,4 +18,8 @@ export function setupApp(app: INestApplication): void {
 
   const origins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim());
   app.enableCors({ origin: origins?.length ? origins : DEFAULT_CORS_ORIGINS });
+
+  // Behind the hosting proxy (Hugging Face Spaces) every request comes from the proxy's address. Trusting
+  // one hop makes `req.ip` the visitor's IP, which the rate limit relies on.
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 }

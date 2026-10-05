@@ -9,7 +9,9 @@ Construido solo con herramientas gratuitas.
 - **NestJS 12** (TypeScript, ESM)
 - **LangChain** con **Groq** (`openai/gpt-oss-120b`, plan gratuito)
 - **RAG** con embeddings locales: **Transformers.js** + `multilingual-e5-small`
+- Límite por IP con `@nestjs/throttler` (5 preguntas por minuto, 30 por hora)
 - Validación con `class-validator`
+- Desplegado en **Hugging Face Spaces** (Docker, plan gratuito)
 - Tests con Vitest
 
 ## Cómo funciona
@@ -64,6 +66,18 @@ curl -X POST http://localhost:3000/chat \
   -d '{"message": "¿Qué hizo Eduardo en Canai?"}'
 ```
 
+### Despliegue (Hugging Face Spaces)
+
+Los embeddings locales necesitan unos 550 MB de RAM, más de lo que da el plan gratuito de Render (512 MB). Los Spaces gratuitos de Hugging Face tienen 16 GB y no piden tarjeta.
+
+El `Dockerfile` compila la API y descarga el modelo de embeddings durante el build, así el servidor no lo descarga cada vez que despierta.
+
+```bash
+npm run deploy:hf   # publica el último commit en huggingface.co/spaces/Optickal095/pregunta-a-mi-cv
+```
+
+Git pide usuario y contraseña: el usuario de Hugging Face y un access token con permiso de escritura. La `GROQ_API_KEY` se configura como *secret* en los ajustes del Space.
+
 ### Tests
 
 ```bash
@@ -76,5 +90,5 @@ npm run test:e2e  # end-to-end (usan modelos falsos: no gastan cuota ni descarga
 - [x] Fase 1: base de conocimiento y endpoint `/chat`
 - [x] Fase 2: RAG (fragmentos, embeddings y búsqueda por similitud)
 - [x] Fase 3: respuestas en streaming y chat en Angular dentro del portfolio ([código del chat](https://github.com/Optickal095/portfolio/tree/main/src/app/chat))
-- [ ] Fase 4: límite de mensajes por IP y despliegue en Render
+- [ ] Fase 4: límite de mensajes por IP y despliegue en Hugging Face Spaces
 - [ ] Fase 5: preguntas sugeridas y fuentes de cada respuesta

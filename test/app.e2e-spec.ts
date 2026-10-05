@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import request from 'supertest';
-import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { setupApp } from './../src/app.setup.js';
 import { CHAT_MODEL } from './../src/chat/chat.constants.js';
@@ -10,7 +9,7 @@ import { EMBEDDINGS } from './../src/retrieval/retrieval.constants.js';
 import { KeywordEmbeddings } from './helpers/keyword-embeddings.js';
 
 describe('API (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -22,7 +21,7 @@ describe('API (e2e)', () => {
       .useValue(new KeywordEmbeddings())
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestExpressApplication>();
     setupApp(app);
     await app.init();
   });
@@ -32,6 +31,34 @@ describe('API (e2e)', () => {
       .get('/health')
       .expect(200)
       .expect({ status: 'ok' });
+  });
+
+  it('GET / redirects to the chat in the portfolio', () => {
+    return request(app.getHttpServer())
+      .get('/')
+      .expect(302)
+      .expect('Location', 'https://optickal095.github.io/portfolio/#pregunta');
+  });
+
+  it('limits each IP to 5 questions per minute', async () => {
+    const ask = (ip: string) =>
+      request(app.getHttpServer())
+        .post('/chat')
+        .set('X-Forwarded-For', ip)
+        .send({ message: '¿Qué hizo en Canai?' });
+
+    for (let i = 0; i < 5; i++) await ask('203.0.113.1').expect(200);
+
+    const blocked = await ask('203.0.113.1').expect(429);
+    expect(blocked.body.message).toContain('muchas preguntas');
+    // Another visitor is not affected.
+    await ask('203.0.113.2').expect(200);
+  });
+
+  it('does not rate-limit GET /health', async () => {
+    for (let i = 0; i < 8; i++) {
+      await request(app.getHttpServer()).get('/health').expect(200);
+    }
   });
 
   it('POST /chat answers using the relevant sections of the CV', async () => {
