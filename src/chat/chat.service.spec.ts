@@ -43,10 +43,21 @@ describe('ChatService', () => {
 
   it('fails with 503 when the model call fails', async () => {
     const model = new FakeListChatModel({ responses: ['x'] });
-    vi.spyOn(model, 'invoke').mockRejectedValue(new Error('429 rate limit'));
+    vi.spyOn(model, 'invoke').mockRejectedValue(new Error('Network error'));
     const service = new ChatService(model, knowledge);
     await expect(service.answer({ message: 'Hola' })).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+
+  it('fails with 429 when the model provider rate-limits the request', async () => {
+    const model = new FakeListChatModel({ responses: ['x'] });
+    vi.spyOn(model, 'invoke').mockRejectedValue(
+      Object.assign(new Error('Rate limit reached'), { status: 429 }),
+    );
+    const service = new ChatService(model, knowledge);
+    await expect(service.answer({ message: 'Hola' })).rejects.toMatchObject({
+      status: 429,
+    });
   });
 });

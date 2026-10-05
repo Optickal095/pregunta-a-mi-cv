@@ -1,4 +1,6 @@
 import {
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
@@ -49,10 +51,27 @@ export class ChatService {
       const result = await this.model.invoke(messages);
       return { answer: result.text.trim() };
     } catch (error) {
+      if (isRateLimitError(error)) {
+        this.logger.warn('Groq rate limit reached');
+        throw new HttpException(
+          'Hay muchas preguntas en este momento. Inténtalo de nuevo en unos segundos.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
       this.logger.error('The model call failed', error);
       throw new ServiceUnavailableException(
         'El asistente no está disponible en este momento. Inténtalo de nuevo en unos minutos.',
       );
     }
   }
+}
+
+/** The free Groq plan caps tokens per minute; its SDK reports that as HTTP 429. */
+function isRateLimitError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    error.status === 429
+  );
 }
