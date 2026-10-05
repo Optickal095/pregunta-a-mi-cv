@@ -20,7 +20,7 @@ import { ChatService } from './chat.service.js';
         return new ChatGroq({
           apiKey,
           model: config.get<string>('GROQ_MODEL') ?? DEFAULT_GROQ_MODEL,
-          temperature: 0.2,
+          temperature: 0,
         });
       },
     },

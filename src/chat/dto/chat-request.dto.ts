@@ -42,3 +42,10 @@ export interface ChatResponse {
   /** Knowledge sections given to the model, as "file › section". */
   sources: string[];
 }
+
+/** One Server-Sent Event of `POST /chat/stream`, sent as JSON in `data:`. */
+export type ChatStreamEvent =
+  | { type: 'sources'; sources: string[] }
+  | { type: 'token'; text: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };

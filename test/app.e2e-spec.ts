@@ -46,6 +46,34 @@ describe('API (e2e)', () => {
     );
   });
 
+  it('POST /chat/stream sends the sources, the answer in pieces and a final event', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/chat/stream')
+      .send({ message: '¿Qué hizo en Canai?' })
+      .expect(200)
+      .expect('Content-Type', /text\/event-stream/);
+
+    const events = response.text
+      .split('\n\n')
+      .filter((block) => block.startsWith('data: '))
+      .map((block) => JSON.parse(block.slice('data: '.length)));
+
+    expect(events[0].type).toBe('sources');
+    expect(events.at(-1)).toEqual({ type: 'done' });
+    const tokens = events.filter((event) => event.type === 'token');
+    expect(tokens.length).toBeGreaterThan(1);
+    expect(tokens.map((event) => event.text).join('')).toBe(
+      'Trabajó en Canai.',
+    );
+  });
+
+  it('POST /chat/stream validates the body like POST /chat', () => {
+    return request(app.getHttpServer())
+      .post('/chat/stream')
+      .send({ message: '' })
+      .expect(400);
+  });
+
   it('POST /chat rejects an empty message', () => {
     return request(app.getHttpServer())
       .post('/chat')

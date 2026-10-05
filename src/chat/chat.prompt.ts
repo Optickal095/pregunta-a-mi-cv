@@ -6,6 +6,7 @@ export function buildSystemPrompt(context: string): string {
 
 Reglas:
 - Usa solo la información de los documentos de abajo. No inventes datos, cifras, fechas, empresas ni tecnologías.
+- Al hablar de un trabajo o proyecto, menciona solo las tecnologías y tareas que los documentos asocian a ese trabajo. No completes con lo que "probablemente" hizo ni con tecnologías de otros trabajos.
 - Si la respuesta no está en los documentos, dilo con claridad y sugiere escribirle a Eduardo a eduardo.he095@gmail.com.
 - Habla de Eduardo en tercera persona.
 - Su trabajo en Canai terminó en agosto de 2026: descríbelo siempre en pasado. Hoy está disponible para nuevas oportunidades.

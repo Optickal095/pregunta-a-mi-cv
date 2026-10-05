@@ -78,6 +78,43 @@ describe('ChatService', () => {
   });
 });
 
+describe('ChatService.streamAnswer', () => {
+  const collect = async (events: AsyncGenerator<unknown>) => {
+    const all: unknown[] = [];
+    for await (const event of events) all.push(event);
+    return all;
+  };
+
+  it('yields the sources, the answer in pieces and a final event', async () => {
+    const model = new FakeListChatModel({ responses: ['Sí'] });
+    const service = new ChatService(model, retrieval);
+
+    const events = await collect(service.streamAnswer({ message: 'Hola' }));
+
+    expect(events).toEqual([
+      {
+        type: 'sources',
+        sources: ['experiencia › Canai', 'tecnologias › Tecnologías'],
+      },
+      { type: 'token', text: 'S' },
+      { type: 'token', text: 'í' },
+      { type: 'done' },
+    ]);
+  });
+
+  it('rejects before yielding anything when the provider rate-limits', async () => {
+    const model = new FakeListChatModel({ responses: ['x'] });
+    vi.spyOn(model, 'stream').mockRejectedValue(
+      Object.assign(new Error('Rate limit reached'), { status: 429 }),
+    );
+    const service = new ChatService(model, retrieval);
+
+    await expect(
+      service.streamAnswer({ message: 'Hola' }).next(),
+    ).rejects.toMatchObject({ status: 429 });
+  });
+});
+
 describe('buildSearchQuery', () => {
   it('uses the message alone when there is no history', () => {
     expect(buildSearchQuery('¿Qué hizo en uMov?', [])).toBe(
