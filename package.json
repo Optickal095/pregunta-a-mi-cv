@@ -4,7 +4,7 @@
   "description": "Chatbot que responde preguntas sobre el CV de Eduardo Hernández Oyarzún",
   "author": "Eduardo Hernández Oyarzún",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "nest build",

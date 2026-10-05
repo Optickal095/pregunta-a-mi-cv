@@ -6,6 +6,7 @@ colorTo: gray
 sdk: docker
 app_port: 7860
 pinned: false
+license: mit
 short_description: API del chatbot sobre el CV de Eduardo Hernández
 ---
 
