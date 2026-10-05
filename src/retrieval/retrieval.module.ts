@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
-import { DEFAULT_EMBEDDINGS_MODEL, E5Embeddings } from './e5-embeddings.js';
+import {
+  DEFAULT_EMBEDDINGS_MODEL,
+  GeminiEmbeddings,
+} from './gemini-embeddings.js';
 import { EMBEDDINGS } from './retrieval.constants.js';
 import { RetrievalService } from './retrieval.service.js';
 
@@ -12,10 +15,14 @@ import { RetrievalService } from './retrieval.service.js';
     {
       provide: EMBEDDINGS,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
-        new E5Embeddings(
+      useFactory: (config: ConfigService) => {
+        const apiKey = config.get<string>('GEMINI_API_KEY');
+        if (!apiKey) return null;
+        return new GeminiEmbeddings(
+          apiKey,
           config.get<string>('EMBEDDINGS_MODEL') ?? DEFAULT_EMBEDDINGS_MODEL,
-        ),
+        );
+      },
     },
   ],
   exports: [RetrievalService],

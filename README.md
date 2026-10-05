@@ -8,17 +8,17 @@ Construido solo con herramientas gratuitas.
 
 - **NestJS 12** (TypeScript, ESM)
 - **LangChain** con **Groq** (`openai/gpt-oss-120b`, plan gratuito)
-- **RAG** con embeddings locales: **Transformers.js** + `multilingual-e5-small`
+- **RAG** con embeddings de **Gemini** (`gemini-embedding-2`, plan gratuito) y un vector store en memoria
 - Límite por IP con `@nestjs/throttler` (5 preguntas por minuto, 30 por hora)
 - Validación con `class-validator`
-- Desplegado en **Hugging Face Spaces** (Docker, plan gratuito)
+- Desplegado en **Render** (plan gratuito)
 - Tests con Vitest
 
 ## Cómo funciona
 
 ```
 Al iniciar
-  knowledge/*.md → un fragmento por sección (##) → embeddings locales → vector store en memoria
+  knowledge/*.md → un fragmento por sección (##) → embeddings (Gemini) → vector store en memoria
 
 POST /chat
   → valida el mensaje (máx. 500 caracteres, historial de máx. 10 turnos)
@@ -38,7 +38,8 @@ Enviar el CV completo en cada pregunta costaba unos 2.100 tokens. El plan gratui
 
 Decisiones:
 
-- **Embeddings locales** (Transformers.js): Groq no ofrece embeddings y así no hace falta otra API key. El modelo `multilingual-e5-small` (~130 MB, se descarga la primera vez) entiende preguntas en español e inglés sobre textos en español.
+- **Embeddings por API (Gemini)**: Groq no ofrece embeddings. Primero los generé localmente con Transformers.js (`multilingual-e5-small`), pero el modelo ocupa ~460 MB de RAM y no cabe en los 512 MB del plan gratuito de Render. `gemini-embedding-2` es gratuito, multilingüe (preguntas en inglés encuentran el CV en español) y deja el servidor liviano.
+- **Sin embeddings, el CV completo**: si falta `GEMINI_API_KEY` o la API falla, cada pregunta recibe el CV entero. Las respuestas siguen siendo correctas; solo gastan más tokens.
 - **Vector store en memoria**: son 17 fragmentos; una base de datos vectorial solo agregaría costo. La clase extiende `VectorStore` de LangChain, así que `similaritySearch` y `asRetriever` funcionan igual.
 - **Fragmentos por sección**: el CV ya está organizado por temas, así que cada `##` es una unidad con sentido propio.
 
@@ -56,7 +57,7 @@ El streaming usa POST (la pregunta y el historial van en el body), así que el n
 
 ```bash
 npm install
-cp .env.example .env   # agrega tu GROQ_API_KEY (gratis en console.groq.com/keys)
+cp .env.example .env   # agrega GROQ_API_KEY (console.groq.com/keys) y GEMINI_API_KEY (aistudio.google.com/apikey)
 npm run start:dev      # http://localhost:3000
 ```
 
@@ -66,17 +67,11 @@ curl -X POST http://localhost:3000/chat \
   -d '{"message": "¿Qué hizo Eduardo en Canai?"}'
 ```
 
-### Despliegue (Hugging Face Spaces)
+### Despliegue (Render)
 
-Los embeddings locales necesitan unos 550 MB de RAM, más de lo que da el plan gratuito de Render (512 MB). Los Spaces gratuitos de Hugging Face tienen 16 GB y no piden tarjeta.
+`render.yaml` define el servicio (Blueprint): Node 24, plan gratuito, `GET /health` como health check. Al crearlo, Render pide los valores de `GROQ_API_KEY` y `GEMINI_API_KEY`. Cada push a `main` se despliega solo.
 
-El `Dockerfile` compila la API y descarga el modelo de embeddings durante el build, así el servidor no lo descarga cada vez que despierta.
-
-```bash
-npm run deploy:hf   # publica el último commit en huggingface.co/spaces/Optickal095/pregunta-a-mi-cv
-```
-
-Git pide usuario y contraseña: el usuario de Hugging Face y un access token con permiso de escritura. La `GROQ_API_KEY` se configura como *secret* en los ajustes del Space.
+El plan gratuito duerme el servidor tras 15 minutos sin uso y despertarlo tarda entre 30 y 60 segundos; el portfolio llama a `/health` al cargar para adelantarse.
 
 ### Tests
 
@@ -90,5 +85,5 @@ npm run test:e2e  # end-to-end (usan modelos falsos: no gastan cuota ni descarga
 - [x] Fase 1: base de conocimiento y endpoint `/chat`
 - [x] Fase 2: RAG (fragmentos, embeddings y búsqueda por similitud)
 - [x] Fase 3: respuestas en streaming y chat en Angular dentro del portfolio ([código del chat](https://github.com/Optickal095/portfolio/tree/main/src/app/chat))
-- [ ] Fase 4: límite de mensajes por IP y despliegue en Hugging Face Spaces
+- [ ] Fase 4: límite de mensajes por IP y despliegue en Render
 - [ ] Fase 5: preguntas sugeridas y fuentes de cada respuesta
