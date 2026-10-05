@@ -1,3 +1,4 @@
+import type { Label } from '../../knowledge/markdown-chunker.js';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -44,13 +45,13 @@ export class ChatRequestDto {
 
 export interface ChatResponse {
   answer: string;
-  /** Knowledge sections given to the model, as "file › section". */
-  sources: string[];
+  /** The CV sections the answer cites, named in Spanish and English. */
+  sources: Label[];
 }
 
 /** One Server-Sent Event of `POST /chat/stream`, sent as JSON in `data:`. */
 export type ChatStreamEvent =
-  | { type: 'sources'; sources: string[] }
+  | { type: 'sources'; sources: Label[] }
   | { type: 'token'; text: string }
   | { type: 'done' }
   | { type: 'error'; message: string };

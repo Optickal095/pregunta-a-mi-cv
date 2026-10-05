@@ -49,7 +49,9 @@ Decisiones:
 |---|---|---|
 | `GET` | `/health` | Estado del servidor. El portfolio lo llama al cargar para despertar el servidor. |
 | `POST` | `/chat` | Body: `{ "message": string, "history"?: { "role": "user" \| "assistant", "content": string }[] }` |
-| `POST` | `/chat/stream` | Mismo body. Responde con Server-Sent Events: `{"type":"sources",...}`, luego `{"type":"token","text":"..."}` por cada fragmento y al final `{"type":"done"}`. |
+| `POST` | `/chat/stream` | Mismo body. Responde con Server-Sent Events: `{"type":"token","text":"..."}` por cada fragmento, luego `{"type":"sources","sources":[{"es":"...","en":"..."}]}` y al final `{"type":"done"}`. |
+
+**Fuentes**: las secciones van numeradas en el prompt y el modelo termina su respuesta con una marca como `[fuentes: 1, 3]` (o `[fuentes: ninguna]`). El servidor la quita, incluso cuando llega partida en varios fragmentos del streaming, y la convierte en la lista `sources`, con el nombre de cada sección en español e inglés (`<!-- en: ... -->` bajo cada encabezado de `knowledge/`). Un umbral de similitud no servía: con `gemini-embedding-2` los puntajes quedan muy juntos y un saludo podía superar a una pregunta relevante.
 
 El streaming usa POST (la pregunta y el historial van en el body), así que el navegador lo lee con `fetch` en vez de `EventSource`. La API espera el primer fragmento del modelo antes de responder, de modo que los errores previos (sin API key, límite de Groq) siguen llegando como errores HTTP normales (503, 429).
 
@@ -88,4 +90,4 @@ npm run test:e2e  # end-to-end (usan modelos falsos: no gastan cuota ni descarga
 - [x] Fase 2: RAG (fragmentos, embeddings y búsqueda por similitud)
 - [x] Fase 3: respuestas en streaming y chat en Angular dentro del portfolio ([código del chat](https://github.com/Optickal095/portfolio/tree/main/src/app/chat))
 - [x] Fase 4: límite de mensajes por IP y despliegue en Render
-- [ ] Fase 5: preguntas sugeridas y fuentes de cada respuesta
+- [x] Fase 5: preguntas sugeridas y fuentes de cada respuesta

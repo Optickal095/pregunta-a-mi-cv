@@ -1,4 +1,5 @@
 # Tecnologías y habilidades
+<!-- en: Technologies and skills -->
 
 - Lenguajes: TypeScript, JavaScript, PHP.
 - Frontend: Angular (incluido Signals), React, HTML5, CSS3, Bootstrap, Ant Design.
@@ -10,6 +11,7 @@
 - Herramientas: Git, GitHub, VS Code, Insomnia.
 
 ## Idiomas
+<!-- en: Languages -->
 
 - Español: nativo.
 - Inglés: avanzado.

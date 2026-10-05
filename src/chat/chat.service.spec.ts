@@ -8,11 +8,19 @@ import { buildSearchQueries, ChatService } from './chat.service.js';
 const search = vi.fn().mockResolvedValue([
   new Document({
     pageContent: 'Experiencia › Canai\n\nUsó NestJS.',
-    metadata: { source: 'experiencia', section: 'Canai' },
+    metadata: {
+      source: 'experiencia',
+      section: 'Canai',
+      label: { es: 'Experiencia › Canai', en: 'Experience › Canai' },
+    },
   }),
   new Document({
     pageContent: 'Tecnologías\n\nNestJS, Angular.',
-    metadata: { source: 'tecnologias', section: 'Tecnologías' },
+    metadata: {
+      source: 'tecnologias',
+      section: 'Tecnologías',
+      label: { es: 'Tecnologías', en: 'Technologies' },
+    },
   }),
 ]);
 const retrieval = { search } as unknown as RetrievalService;
@@ -21,7 +29,9 @@ describe('ChatService', () => {
   beforeEach(() => search.mockClear());
 
   it('answers with the retrieved chunks, the history and the question', async () => {
-    const model = new FakeListChatModel({ responses: ['  Sí, usó NestJS.  '] });
+    const model = new FakeListChatModel({
+      responses: ['  Sí, usó NestJS.\n\n[fuentes: 2]  '],
+    });
     const invoke = vi.spyOn(model, 'invoke');
     const service = new ChatService(model, retrieval);
 
@@ -35,7 +45,8 @@ describe('ChatService', () => {
 
     expect(result).toEqual({
       answer: 'Sí, usó NestJS.',
-      sources: ['experiencia › Canai', 'tecnologias › Tecnologías'],
+      // Only the document the model cited, not every retrieved one.
+      sources: [{ es: 'Tecnologías', en: 'Technologies' }],
     });
     const messages = invoke.mock.calls[0][0] as BaseMessage[];
     expect(messages.map((m) => m.type)).toEqual([
@@ -45,9 +56,12 @@ describe('ChatService', () => {
       'system',
       'human',
     ]);
-    expect(messages[0].text).toContain('<documento fuente="experiencia">');
+    expect(messages[0].text).toContain(
+      '<documento id="1" fuente="experiencia">',
+    );
     expect(messages[0].text).toContain('Usó NestJS.');
     expect(messages[3].text).toMatch(/^Language:/);
+    expect(messages[3].text).toContain('[fuentes: 2, 5]');
     expect(messages[4].text).toBe('¿Usó NestJS?');
   });
 
@@ -101,21 +115,34 @@ describe('ChatService.streamAnswer', () => {
     return all;
   };
 
-  it('yields the sources, the answer in pieces and a final event', async () => {
-    const model = new FakeListChatModel({ responses: ['Sí'] });
+  it('yields the answer in pieces, then the cited sources and a final event', async () => {
+    const model = new FakeListChatModel({ responses: ['Sí [fuentes: 1, 9]'] });
     const service = new ChatService(model, retrieval);
 
     const events = await collect(service.streamAnswer({ message: 'Hola' }));
 
     expect(events).toEqual([
-      {
-        type: 'sources',
-        sources: ['experiencia › Canai', 'tecnologias › Tecnologías'],
-      },
       { type: 'token', text: 'S' },
       { type: 'token', text: 'í' },
+      { type: 'token', text: ' ' },
+      // Id 9 does not exist and is ignored.
+      {
+        type: 'sources',
+        sources: [{ es: 'Experiencia › Canai', en: 'Experience › Canai' }],
+      },
       { type: 'done' },
     ]);
+  });
+
+  it('sends no sources when the model cites none', async () => {
+    const model = new FakeListChatModel({
+      responses: ['Hola. [fuentes: ninguna]'],
+    });
+    const service = new ChatService(model, retrieval);
+
+    const events = await collect(service.streamAnswer({ message: 'Hola' }));
+
+    expect(events).toContainEqual({ type: 'sources', sources: [] });
   });
 
   it('rejects before yielding anything when the provider rate-limits', async () => {

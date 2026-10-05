@@ -1,14 +1,18 @@
 # Proyectos
+<!-- en: Projects -->
 
 ## Agente de IA por WhatsApp (Canai, privado)
+<!-- en: WhatsApp AI agent -->
 
 Agente en producción que conversa con clientes por WhatsApp, envía órdenes de trabajo y procesa las respuestas con OpenAI, LangChain y Google Vision: valida imágenes, revisa la legibilidad de boletas y transcribe audios. El código es privado de Canai.
 
 ## Plataforma de rehabilitación uMov (privado)
+<!-- en: uMov rehabilitation platform -->
 
 Panel web con gráficas de la evolución de pacientes en rehabilitación post-ACV, hecho con React, Ant Design, JavaScript, TypeScript y MySQL. El código es privado.
 
 ## Tocata (proyecto de título)
+<!-- en: Tocata -->
 
 Red social para músicos emergentes y organizadores de eventos, con MEAN stack y JWT.
 
@@ -16,6 +20,7 @@ Red social para músicos emergentes y organizadores de eventos, con MEAN stack y
 - Backend: https://github.com/Optickal095/TocataBackend
 
 ## Portfolio personal
+<!-- en: Personal portfolio -->
 
 Sitio personal hecho con Angular (componentes standalone y Signals), con diseño estilo terminal y desplegado en GitHub Pages.
 
@@ -23,5 +28,6 @@ Sitio personal hecho con Angular (componentes standalone y Signals), con diseño
 - Código: https://github.com/Optickal095/portfolio
 
 ## Pregúntale a mi CV (este chatbot)
+<!-- en: Ask my CV (this chatbot) -->
 
 Chatbot que responde preguntas sobre la experiencia de Eduardo usando su CV como fuente. Backend en NestJS con LangChain, construido solo con herramientas gratuitas.

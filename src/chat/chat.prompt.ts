@@ -51,14 +51,17 @@ export function buildLanguageReminder(
 - If its language is unclear (for example a single technology name), answer in ${fallback}.`;
 }
 
-/** Formats retrieved chunks for the prompt, each tagged with where it came from. */
+/**
+ * Formats retrieved chunks for the prompt. Each one gets an id (its position,
+ * from 1) that the model cites at the end of its answer.
+ */
 export function formatContext(
   chunks: DocumentInterface<ChunkMetadata>[],
 ): string {
   return chunks
     .map(
-      (chunk) =>
-        `<documento fuente="${chunk.metadata.source}">\n${chunk.pageContent}\n</documento>`,
+      (chunk, index) =>
+        `<documento id="${index + 1}" fuente="${chunk.metadata.source}">\n${chunk.pageContent}\n</documento>`,
     )
     .join('\n\n');
 }

@@ -1,6 +1,8 @@
 # Experiencia profesional
+<!-- en: Professional experience -->
 
 ## Software Engineer en Canai (noviembre 2025 – agosto 2026)
+<!-- en: Software Engineer at Canai -->
 
 Canai desarrolla una plataforma de gestión de personal de campo y automatización de órdenes de trabajo, construida como un monorepo multi-proyecto.
 
@@ -14,6 +16,7 @@ Lo que hizo Eduardo:
 - Aplicó arquitectura multi-tenant, patrón Repository (DDD) y estándares de código estrictos.
 
 ## Desarrollador FullStack en uMov (diciembre 2023 – mayo 2024)
+<!-- en: Full-Stack Developer at uMov -->
 
 uMov desarrolla una plataforma web complementaria a un dispositivo médico que respalda la rehabilitación de pacientes post-accidente cerebrovascular (ACV).
 
@@ -24,6 +27,7 @@ Lo que hizo Eduardo:
 - Trabajó en equipo con otros desarrolladores y colaboró con diseñadores, el CEO y el CIO del proyecto.
 
 ## Proyecto de Título en la Universidad del Bío-Bío (marzo 2023 – agosto 2023)
+<!-- en: Capstone project at Universidad del Bío-Bío -->
 
 Desarrolló una red social llamada Tocata, cuyo objetivo era difundir el trabajo de músicos emergentes y permitir que organizadores de eventos contrataran sus servicios musicales.
 
@@ -32,6 +36,7 @@ Desarrolló una red social llamada Tocata, cuyo objetivo era difundir el trabajo
 - Optimización del rendimiento y la seguridad de la aplicación.
 
 ## Desarrollador en EzSolutions (octubre 2021 – enero 2022)
+<!-- en: Developer at EzSolutions -->
 
 Creó una aplicación web para un local comercial, implementando los módulos clave para su funcionamiento.
 

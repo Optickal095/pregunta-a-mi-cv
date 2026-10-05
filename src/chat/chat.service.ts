@@ -13,25 +13,35 @@ import {
   SystemMessage,
   type BaseMessage,
 } from '@langchain/core/messages';
+import type { DocumentInterface } from '@langchain/core/documents';
+import type { ChunkMetadata, Label } from '../knowledge/markdown-chunker.js';
 import { RetrievalService } from '../retrieval/retrieval.service.js';
 import { CHAT_MODEL } from './chat.constants.js';
-import { detectLanguage } from './language.js';
 import {
   buildLanguageReminder,
   buildSystemPrompt,
   formatContext,
 } from './chat.prompt.js';
+import {
+  CITATION_INSTRUCTION,
+  CitationStreamFilter,
+  extractCitations,
+} from './citations.js';
 import type {
   ChatRequestDto,
   ChatResponse,
   ChatStreamEvent,
   ChatTurnDto,
 } from './dto/chat-request.dto.js';
+import { detectLanguage } from './language.js';
+
+type Chunk = DocumentInterface<ChunkMetadata>;
 
 interface PreparedChat {
   model: BaseChatModel;
   messages: BaseMessage[];
-  sources: string[];
+  /** The documents in the prompt; a citation `n` is `chunks[n - 1]`. */
+  chunks: Chunk[];
 }
 
 @Injectable()
@@ -44,23 +54,25 @@ export class ChatService {
   ) {}
 
   async answer(request: ChatRequestDto): Promise<ChatResponse> {
-    const { model, messages, sources } = await this.prepare(request);
+    const { model, messages, chunks } = await this.prepare(request);
 
     try {
       const result = await model.invoke(messages);
+      const { answer, ids } = extractCitations(result.text);
+      const sources = citedSources(chunks, ids);
       const inputTokens = result.usage_metadata?.input_tokens;
       this.logger.log(
-        `Answered with ${sources.length} sources` +
+        `Answered citing ${sources.length} of ${chunks.length} documents` +
           (inputTokens ? ` (${inputTokens} input tokens)` : ''),
       );
-      return { answer: result.text.trim(), sources };
+      return { answer, sources };
     } catch (error) {
       throw this.toHttpError(error);
     }
   }
 
   /**
-   * Yields the sources, then the answer text as the model writes it.
+   * Yields the answer text as the model writes it, then the sources it cited.
    *
    * Nothing is yielded until the model sends its first chunk, so a failed
    * call (rate limit, no API key) rejects the first `next()` and the
@@ -69,26 +81,31 @@ export class ChatService {
   async *streamAnswer(
     request: ChatRequestDto,
   ): AsyncGenerator<ChatStreamEvent> {
-    const { model, messages, sources } = await this.prepare(request);
+    const { model, messages, chunks } = await this.prepare(request);
 
-    let chunks: AsyncIterator<BaseMessage>;
+    let pieces: AsyncIterator<BaseMessage>;
     let next: IteratorResult<BaseMessage>;
     try {
-      chunks = (await model.stream(messages))[Symbol.asyncIterator]();
-      next = await chunks.next();
+      pieces = (await model.stream(messages))[Symbol.asyncIterator]();
+      next = await pieces.next();
     } catch (error) {
       throw this.toHttpError(error);
     }
 
-    yield { type: 'sources', sources };
+    const filter = new CitationStreamFilter();
     try {
       while (!next.done) {
-        if (next.value.text) yield { type: 'token', text: next.value.text };
-        next = await chunks.next();
+        const text = filter.push(next.value.text);
+        if (text) yield { type: 'token', text };
+        next = await pieces.next();
       }
     } catch (error) {
       throw this.toHttpError(error);
     }
+
+    const { rest, ids } = filter.finish();
+    if (rest) yield { type: 'token', text: rest };
+    yield { type: 'sources', sources: citedSources(chunks, ids) };
     yield { type: 'done' };
   }
 
@@ -106,13 +123,6 @@ export class ChatService {
     const chunks = await this.retrieval.search(
       ...buildSearchQueries(message, history),
     );
-    const sources = [
-      ...new Set(
-        chunks.map(
-          ({ metadata }) => `${metadata.source} › ${metadata.section}`,
-        ),
-      ),
-    ];
 
     const messages: BaseMessage[] = [
       new SystemMessage(buildSystemPrompt(formatContext(chunks))),
@@ -121,11 +131,13 @@ export class ChatService {
           ? new HumanMessage(turn.content)
           : new AIMessage(turn.content),
       ),
-      new SystemMessage(buildLanguageReminder(detectLanguage(message), locale)),
+      new SystemMessage(
+        `${buildLanguageReminder(detectLanguage(message), locale)}\n\n${CITATION_INSTRUCTION}`,
+      ),
       new HumanMessage(message),
     ];
 
-    return { model: this.model, messages, sources };
+    return { model: this.model, messages, chunks };
   }
 
   private toHttpError(error: unknown): HttpException {
@@ -158,6 +170,13 @@ export function buildSearchQueries(
   return previousQuestion
     ? [message, `${previousQuestion.content}\n${message}`]
     : [message];
+}
+
+/** Labels of the cited documents, in citation order; unknown ids are ignored. */
+function citedSources(chunks: Chunk[], ids: number[]): Label[] {
+  return ids
+    .map((id) => chunks[id - 1]?.metadata.label)
+    .filter((label): label is Label => label !== undefined);
 }
 
 /** The free Groq plan caps tokens per minute; its SDK reports that as HTTP 429. */

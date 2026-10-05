@@ -16,7 +16,11 @@ describe('API (e2e)', () => {
       imports: [AppModule],
     })
       .overrideProvider(CHAT_MODEL)
-      .useValue(new FakeListChatModel({ responses: ['Trabajó en Canai.'] }))
+      .useValue(
+        new FakeListChatModel({
+          responses: ['Trabajó en Canai. [fuentes: 1]'],
+        }),
+      )
       .overrideProvider(EMBEDDINGS)
       .useValue(new KeywordEmbeddings())
       .compile();
@@ -79,12 +83,15 @@ describe('API (e2e)', () => {
       .expect(200);
 
     expect(response.body.answer).toBe('Trabajó en Canai.');
-    expect(response.body.sources[0]).toBe(
-      'experiencia › Software Engineer en Canai (noviembre 2025 – agosto 2026)',
-    );
+    expect(response.body.sources).toEqual([
+      {
+        es: 'Experiencia profesional › Software Engineer en Canai',
+        en: 'Professional experience › Software Engineer at Canai',
+      },
+    ]);
   });
 
-  it('POST /chat/stream sends the sources, the answer in pieces and a final event', async () => {
+  it('POST /chat/stream sends the answer in pieces, then the sources and a final event', async () => {
     const response = await request(app.getHttpServer())
       .post('/chat/stream')
       .send({ message: '¿Qué hizo en Canai?' })
@@ -96,13 +103,20 @@ describe('API (e2e)', () => {
       .filter((block) => block.startsWith('data: '))
       .map((block) => JSON.parse(block.slice('data: '.length)));
 
-    expect(events[0].type).toBe('sources');
-    expect(events.at(-1)).toEqual({ type: 'done' });
+    expect(events.map((event) => event.type).slice(-2)).toEqual([
+      'sources',
+      'done',
+    ]);
+    expect(events.at(-2).sources).toHaveLength(1);
     const tokens = events.filter((event) => event.type === 'token');
     expect(tokens.length).toBeGreaterThan(1);
-    expect(tokens.map((event) => event.text).join('')).toBe(
-      'Trabajó en Canai.',
-    );
+    // The citation marker never reaches the visitor.
+    expect(
+      tokens
+        .map((event) => event.text)
+        .join('')
+        .trim(),
+    ).toBe('Trabajó en Canai.');
   });
 
   it('POST /chat/stream validates the body like POST /chat', () => {
