@@ -46,6 +46,9 @@ Decisiones:
 |---|---|---|
 | `GET` | `/health` | Estado del servidor. El portfolio lo llama al cargar para despertar el servidor. |
 | `POST` | `/chat` | Body: `{ "message": string, "history"?: { "role": "user" \| "assistant", "content": string }[] }` |
+| `POST` | `/chat/stream` | Mismo body. Responde con Server-Sent Events: `{"type":"sources",...}`, luego `{"type":"token","text":"..."}` por cada fragmento y al final `{"type":"done"}`. |
+
+El streaming usa POST (la pregunta y el historial van en el body), así que el navegador lo lee con `fetch` en vez de `EventSource`. La API espera el primer fragmento del modelo antes de responder, de modo que los errores previos (sin API key, límite de Groq) siguen llegando como errores HTTP normales (503, 429).
 
 ## Desarrollo
 
@@ -72,6 +75,6 @@ npm run test:e2e  # end-to-end (usan modelos falsos: no gastan cuota ni descarga
 
 - [x] Fase 1: base de conocimiento y endpoint `/chat`
 - [x] Fase 2: RAG (fragmentos, embeddings y búsqueda por similitud)
-- [ ] Fase 3: respuestas en streaming y chat en Angular dentro del portfolio
+- [x] Fase 3: respuestas en streaming y chat en Angular dentro del portfolio ([código del chat](https://github.com/Optickal095/portfolio/tree/main/src/app/chat))
 - [ ] Fase 4: límite de mensajes por IP y despliegue en Render
 - [ ] Fase 5: preguntas sugeridas y fuentes de cada respuesta
