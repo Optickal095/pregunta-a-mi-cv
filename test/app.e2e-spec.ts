@@ -126,6 +126,17 @@ describe('API (e2e)', () => {
       .expect(400);
   });
 
+  it('POST /chat accepts only es or en as locale', async () => {
+    await request(app.getHttpServer())
+      .post('/chat')
+      .send({ message: 'Hola', locale: 'en' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post('/chat')
+      .send({ message: 'Olá', locale: 'pt' })
+      .expect(400);
+  });
+
   it('POST /chat rejects an invalid history role', () => {
     return request(app.getHttpServer())
       .post('/chat')

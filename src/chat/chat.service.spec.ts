@@ -3,7 +3,7 @@ import { Document } from '@langchain/core/documents';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { RetrievalService } from '../retrieval/retrieval.service.js';
-import { buildSearchQuery, ChatService } from './chat.service.js';
+import { buildSearchQueries, ChatService } from './chat.service.js';
 
 const search = vi.fn().mockResolvedValue([
   new Document({
@@ -42,11 +42,27 @@ describe('ChatService', () => {
       'system',
       'human',
       'ai',
+      'system',
       'human',
     ]);
     expect(messages[0].text).toContain('<documento fuente="experiencia">');
     expect(messages[0].text).toContain('Usó NestJS.');
-    expect(messages[3].text).toBe('¿Usó NestJS?');
+    expect(messages[3].text).toMatch(/^Language:/);
+    expect(messages[4].text).toBe('¿Usó NestJS?');
+  });
+
+  it('falls back to the portfolio language for unclear or unsupported questions', async () => {
+    const model = new FakeListChatModel({ responses: ['ok'] });
+    const invoke = vi.spyOn(model, 'invoke');
+    const service = new ChatService(model, retrieval);
+
+    await service.answer({ message: 'NestJS?', locale: 'en' });
+    await service.answer({ message: 'NestJS?' });
+
+    const reminder = (call: number) =>
+      (invoke.mock.calls[call][0] as BaseMessage[]).at(-2)?.text;
+    expect(reminder(0)).toContain('reply in English');
+    expect(reminder(1)).toContain('reply in Spanish');
   });
 
   it('fails with 503 when no model is configured', async () => {
@@ -115,19 +131,22 @@ describe('ChatService.streamAnswer', () => {
   });
 });
 
-describe('buildSearchQuery', () => {
-  it('uses the message alone when there is no history', () => {
-    expect(buildSearchQuery('¿Qué hizo en uMov?', [])).toBe(
+describe('buildSearchQueries', () => {
+  it('searches with the message alone when there is no history', () => {
+    expect(buildSearchQueries('¿Qué hizo en uMov?', [])).toEqual([
       '¿Qué hizo en uMov?',
-    );
+    ]);
   });
 
-  it('adds the previous question so follow-ups keep their topic', () => {
+  it('also searches with the previous question so follow-ups keep their topic', () => {
     expect(
-      buildSearchQuery('¿Y qué tecnologías usó ahí?', [
+      buildSearchQueries('¿Y qué tecnologías usó ahí?', [
         { role: 'user', content: '¿Qué hizo en uMov?' },
         { role: 'assistant', content: 'Construyó gráficas.' },
       ]),
-    ).toBe('¿Qué hizo en uMov?\n¿Y qué tecnologías usó ahí?');
+    ).toEqual([
+      '¿Y qué tecnologías usó ahí?',
+      '¿Qué hizo en uMov?\n¿Y qué tecnologías usó ahí?',
+    ]);
   });
 });

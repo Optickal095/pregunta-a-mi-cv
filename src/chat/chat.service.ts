@@ -15,7 +15,12 @@ import {
 } from '@langchain/core/messages';
 import { RetrievalService } from '../retrieval/retrieval.service.js';
 import { CHAT_MODEL } from './chat.constants.js';
-import { buildSystemPrompt, formatContext } from './chat.prompt.js';
+import { detectLanguage } from './language.js';
+import {
+  buildLanguageReminder,
+  buildSystemPrompt,
+  formatContext,
+} from './chat.prompt.js';
 import type {
   ChatRequestDto,
   ChatResponse,
@@ -90,6 +95,7 @@ export class ChatService {
   private async prepare({
     message,
     history = [],
+    locale,
   }: ChatRequestDto): Promise<PreparedChat> {
     if (!this.model) {
       throw new ServiceUnavailableException(
@@ -98,7 +104,7 @@ export class ChatService {
     }
 
     const chunks = await this.retrieval.search(
-      buildSearchQuery(message, history),
+      ...buildSearchQueries(message, history),
     );
     const sources = [
       ...new Set(
@@ -115,6 +121,7 @@ export class ChatService {
           ? new HumanMessage(turn.content)
           : new AIMessage(turn.content),
       ),
+      new SystemMessage(buildLanguageReminder(detectLanguage(message), locale)),
       new HumanMessage(message),
     ];
 
@@ -138,14 +145,19 @@ export class ChatService {
 
 /**
  * A follow-up like "¿y qué tecnologías usó ahí?" does not say where "ahí" is,
- * so the previous question joins the search to keep the topic.
+ * so a second search adds the previous question to keep the topic. The
+ * question alone is always searched too: when the visitor changes topic
+ * ("¿qué estudió?" after asking about Canai), the old topic must not crowd
+ * out the new one.
  */
-export function buildSearchQuery(
+export function buildSearchQueries(
   message: string,
   history: ChatTurnDto[],
-): string {
+): string[] {
   const previousQuestion = history.findLast((turn) => turn.role === 'user');
-  return previousQuestion ? `${previousQuestion.content}\n${message}` : message;
+  return previousQuestion
+    ? [message, `${previousQuestion.content}\n${message}`]
+    : [message];
 }
 
 /** The free Groq plan caps tokens per minute; its SDK reports that as HTTP 429. */

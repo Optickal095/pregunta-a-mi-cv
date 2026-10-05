@@ -35,6 +35,11 @@ export class ChatRequestDto {
   @ValidateNested({ each: true })
   @Type(() => ChatTurnDto)
   history?: ChatTurnDto[];
+
+  /** Language of the page the question comes from; used when the question's own language is unclear. */
+  @IsOptional()
+  @IsIn(['es', 'en'])
+  locale?: 'es' | 'en';
 }
 
 export interface ChatResponse {

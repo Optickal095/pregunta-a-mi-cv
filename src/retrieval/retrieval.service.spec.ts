@@ -35,6 +35,17 @@ describe('RetrievalService', () => {
     expect(results.map((chunk) => chunk.metadata.section)).toEqual(['uMov']);
   });
 
+  it('keeps the best match of every query when given several', async () => {
+    const service = await createService(new KeywordEmbeddings());
+    const results = await service.search(
+      '¿Qué estudió? Tocata',
+      'Canai y uMov',
+    );
+    const sections = results.map((chunk) => chunk.metadata.section);
+    expect(sections[0]).toBe('Tocata');
+    expect(sections).toHaveLength(2);
+  });
+
   it('uses the whole CV when there are no embeddings', async () => {
     const service = await createService(null);
     expect(await service.search('¿Qué hizo en uMov?')).toHaveLength(3);

@@ -58,10 +58,21 @@ export class RetrievalService implements OnApplicationBootstrap {
     }
   }
 
-  async search(query: string): Promise<Chunk[]> {
-    if (!this.store) return this.allChunks();
+  /**
+   * Searches with each query and merges the results, alternating between them
+   * so every query keeps its best matches. Returns at most top-k + 2 chunks.
+   */
+  async search(...queries: string[]): Promise<Chunk[]> {
+    const store = this.store;
+    if (!store) return this.allChunks();
     try {
-      return (await this.store.similaritySearch(query, this.topK)) as Chunk[];
+      const results = await Promise.all(
+        queries.map(
+          (query) =>
+            store.similaritySearch(query, this.topK) as Promise<Chunk[]>,
+        ),
+      );
+      return interleaveUnique(results).slice(0, this.topK + 2);
     } catch (error) {
       this.logger.warn(`Search failed, using the whole CV: ${String(error)}`);
       return this.allChunks();
@@ -71,4 +82,21 @@ export class RetrievalService implements OnApplicationBootstrap {
   private allChunks(): Chunk[] {
     return [...this.knowledge.getChunks()];
   }
+}
+
+/** [[a1, a2], [b1, a1]] → [a1, b1, a2]: alternates lists, dropping repeats. */
+function interleaveUnique(lists: Chunk[][]): Chunk[] {
+  const merged: Chunk[] = [];
+  const seen = new Set<string>();
+  const longest = Math.max(0, ...lists.map((list) => list.length));
+  for (let i = 0; i < longest; i++) {
+    for (const list of lists) {
+      const chunk = list[i];
+      if (chunk && !seen.has(chunk.pageContent)) {
+        seen.add(chunk.pageContent);
+        merged.push(chunk);
+      }
+    }
+  }
+  return merged;
 }
