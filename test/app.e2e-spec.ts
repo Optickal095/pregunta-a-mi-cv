@@ -44,7 +44,7 @@ describe('API (e2e)', () => {
     const ask = (ip: string) =>
       request(app.getHttpServer())
         .post('/chat')
-        .set('X-Forwarded-For', ip)
+        .set('CF-Connecting-IP', ip)
         .send({ message: '¿Qué hizo en Canai?' });
 
     for (let i = 0; i < 5; i++) await ask('203.0.113.1').expect(200);
@@ -53,6 +53,17 @@ describe('API (e2e)', () => {
     expect(blocked.body.message).toContain('muchas preguntas');
     // Another visitor is not affected.
     await ask('203.0.113.2').expect(200);
+  });
+
+  it('ignores X-Forwarded-For, which visitors can spoof', async () => {
+    const ask = (spoofedIp: string) =>
+      request(app.getHttpServer())
+        .post('/chat')
+        .set('X-Forwarded-For', spoofedIp)
+        .send({ message: '¿Qué hizo en Canai?' });
+
+    for (let i = 0; i < 5; i++) await ask(`198.51.100.${i}`).expect(200);
+    await ask('198.51.100.99').expect(429);
   });
 
   it('does not rate-limit GET /health', async () => {

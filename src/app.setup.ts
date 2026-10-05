@@ -18,9 +18,4 @@ export function setupApp(app: NestExpressApplication): void {
 
   const origins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim());
   app.enableCors({ origin: origins?.length ? origins : DEFAULT_CORS_ORIGINS });
-
-  // Behind the hosting proxy (Render) every request comes from
-  // the proxy's address. Trusting one hop makes `req.ip` the visitor's IP,
-  // which the rate limit relies on.
-  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 }

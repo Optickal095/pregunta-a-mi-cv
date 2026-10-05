@@ -8,9 +8,9 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ChatService } from './chat.service.js';
+import { ClientIpThrottlerGuard } from './client-ip-throttler.guard.js';
 import {
   ChatRequestDto,
   type ChatResponse,
@@ -18,7 +18,7 @@ import {
 } from './dto/chat-request.dto.js';
 
 @Controller('chat')
-@UseGuards(ThrottlerGuard)
+@UseGuards(ClientIpThrottlerGuard)
 export class ChatController {
   constructor(@Inject(ChatService) private readonly chat: ChatService) {}
 
