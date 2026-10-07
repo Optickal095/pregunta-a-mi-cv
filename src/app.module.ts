@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { AppController } from './app.controller.js';
-import { ChatModule } from './chat/chat.module.js';
+import { ChatModule } from './chat.module.js';
+import { HealthController } from './presentation/http/health.controller.js';
 
 @Module({
   imports: [
@@ -19,6 +19,6 @@ import { ChatModule } from './chat/chat.module.js';
     }),
     ChatModule,
   ],
-  controllers: [AppController],
+  controllers: [HealthController],
 })
 export class AppModule {}

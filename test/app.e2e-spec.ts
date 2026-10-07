@@ -1,26 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { FakeListChatModel } from '@langchain/core/utils/testing';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { setupApp } from './../src/app.setup.js';
-import { CHAT_MODEL } from './../src/chat/chat.constants.js';
-import { EMBEDDINGS } from './../src/retrieval/retrieval.constants.js';
+import { CHAT_MODEL } from './../src/application/ports/chat-model.port.js';
+import {
+  AssistantNotConfiguredError,
+  AssistantRateLimitedError,
+} from './../src/domain/errors.js';
+import { EMBEDDINGS } from './../src/infrastructure/retrieval/retriever.factory.js';
+import { ScriptedChatModel } from './fakes/scripted-chat-model.js';
 import { KeywordEmbeddings } from './helpers/keyword-embeddings.js';
 
 describe('API (e2e)', () => {
   let app: NestExpressApplication;
+  let model: ScriptedChatModel;
 
   beforeEach(async () => {
+    model = new ScriptedChatModel(['Trabajó en Canai. [fuentes: 1]']);
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(CHAT_MODEL)
-      .useValue(
-        new FakeListChatModel({
-          responses: ['Trabajó en Canai. [fuentes: 1]'],
-        }),
-      )
+      .useValue(model)
       .overrideProvider(EMBEDDINGS)
       .useValue(new KeywordEmbeddings())
       .compile();
@@ -35,6 +37,25 @@ describe('API (e2e)', () => {
       .get('/health')
       .expect(200)
       .expect({ status: 'ok' });
+  });
+
+  it('POST /chat answers 429 when the model provider is rate-limited', async () => {
+    model.failWith(new AssistantRateLimitedError());
+    const response = await request(app.getHttpServer())
+      .post('/chat')
+      .send({ message: '¿Qué hizo en Canai?' })
+      .expect(429);
+    expect(response.body.message).toContain('muchas preguntas');
+  });
+
+  it('POST /chat/stream answers 503 before streaming when no model is configured', async () => {
+    model.failWith(new AssistantNotConfiguredError());
+    const response = await request(app.getHttpServer())
+      .post('/chat/stream')
+      .send({ message: '¿Qué hizo en Canai?' })
+      .expect(503)
+      .expect('Content-Type', /json/);
+    expect(response.body.message).toContain('GROQ_API_KEY');
   });
 
   it('GET / redirects to the chat in the portfolio', () => {

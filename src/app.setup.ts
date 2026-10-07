@@ -1,5 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { AssistantErrorFilter } from './presentation/http/assistant-error.filter.js';
 
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:4200',
@@ -15,6 +16,8 @@ export function setupApp(app: NestExpressApplication): void {
       transform: true,
     }),
   );
+
+  app.useGlobalFilters(new AssistantErrorFilter());
 
   const origins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim());
   app.enableCors({ origin: origins?.length ? origins : DEFAULT_CORS_ORIGINS });

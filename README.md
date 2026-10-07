@@ -43,6 +43,51 @@ Decisiones:
 - **Vector store en memoria**: son 17 fragmentos; una base de datos vectorial solo agregaría costo. La clase extiende `VectorStore` de LangChain, así que `similaritySearch` y `asRetriever` funcionan igual.
 - **Fragmentos por sección**: el CV ya está organizado por temas, así que cada `##` es una unidad con sentido propio.
 
+## Arquitectura
+
+Clean Architecture con puertos y adaptadores. Las dependencias apuntan solo hacia adentro: el dominio y los casos de uso son TypeScript puro y no conocen NestJS, LangChain, Groq ni Gemini.
+
+```
+src/
+├── domain/                 Reglas de negocio puras
+│   ├── conversation.ts       Question, Answer, AnswerEvent, idiomas
+│   ├── knowledge-chunk.ts    Sección del CV (texto + etiqueta es/en)
+│   ├── citations.ts          Protocolo de citas [fuentes: …] y filtro para streaming
+│   └── errors.ts             AssistantNotConfigured / RateLimited / Unavailable
+├── application/            Casos de uso y puertos
+│   ├── ports/                ChatModel, Retriever, KnowledgeRepository, LanguageDetector
+│   ├── prompt-builder.ts     Prompt, recordatorio de idioma, consultas de búsqueda
+│   └── use-cases/            PrepareConversation, AnswerQuestion, StreamAnswer
+├── infrastructure/         Adaptadores de los puertos
+│   ├── ai/                   LangChainChatModel (Groq), UnconfiguredChatModel, factory
+│   ├── retrieval/            VectorRetriever (Gemini + vector store), WholeKnowledgeRetriever, FallbackRetriever, factory
+│   ├── knowledge/            MarkdownKnowledgeRepository + chunker
+│   └── language/             EldLanguageDetector
+├── presentation/http/      Controladores, DTOs, filtro de errores, SSE, límite por IP
+└── chat.module.ts          Raíz de composición: conecta cada puerto con su adaptador
+```
+
+**Flujo de una pregunta:** `ChatController` valida el body y lo convierte en una `Question` → `StreamAnswerUseCase` → `PrepareConversation` busca con el `Retriever` y arma el prompt con el idioma que entrega el `LanguageDetector` → el `ChatModel` responde por partes → el filtro de citas quita la marca `[fuentes: …]` y la convierte en fuentes → el controlador escribe los eventos SSE.
+
+**SOLID en el código:**
+
+- **Responsabilidad única:** cada clase hace una cosa. Por ejemplo, el controlador solo traduce HTTP y el `MarkdownKnowledgeRepository` solo lee archivos.
+- **Abierto/cerrado e inversión de dependencias:** los casos de uso dependen de puertos. Cambiar Groq por otro proveedor, o Gemini por otros embeddings, es escribir un adaptador nuevo y registrarlo en `chat.module.ts`, sin tocar la lógica.
+- **Segregación de interfaces:** puertos pequeños, de uno o dos métodos.
+
+**Patrones de diseño:**
+
+| Patrón | Dónde | Para qué |
+|---|---|---|
+| Adapter | `LangChainChatModel`, `VectorRetriever`, `EldLanguageDetector`, `MarkdownKnowledgeRepository` | Exponer librerías externas a través de los puertos |
+| Repository | `KnowledgeRepository` | Aislar dónde vive el CV (hoy, archivos Markdown) |
+| Decorator | `FallbackRetriever` | Si la búsqueda semántica falla, responder con el CV completo |
+| Null Object | `UnconfiguredChatModel` | Sin API key, cada llamada informa el problema; los casos de uso no necesitan un `if (!model)` |
+| Factory | `createChatModel`, `createRetriever` | Elegir la implementación según la configuración |
+| Exception Filter | `AssistantErrorFilter` | Traducir errores de dominio a 429 o 503 en un solo lugar |
+
+**Tests por capa:** los casos de uso se prueban con dobles de los puertos (`test/fakes/`), sin red ni frameworks. Los adaptadores se prueban con sus librerías y los end-to-end recorren la API completa con un modelo de chat guionado.
+
 ## API
 
 | Método | Ruta | Descripción |
